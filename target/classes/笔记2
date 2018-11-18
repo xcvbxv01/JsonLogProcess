@@ -1,0 +1,341 @@
+
+一、Ubuntu --> 修改主机名称之后，要特别主要修改主机和ip的映射（否则会造成java.net.UnknownHostException: 主机名: 主机名的异常，mkdir: Call From java.net.UnknownHostException: s100: s100: unknown error to localhost:8020 failed on connection exception）
+    解决办法：
+    修改/etc/hosts文件
+    127.0.0.1 主机名 localhost.localdomain localhost
+    或是再添加一条
+    127.0.0.1 主机名
+    主机名是新加的，原来没有，保存，问题解决。
+
+二、ubuntu--> 解决sudo 不在命令当中的问题
+    a. $> su root
+    b. $> nano /etc/sudoers
+    c. 修改文件，添加一行文本
+     # User privilege specification
+    root    ALL=(ALL:ALL) ALL
+    ubuntu    ALL=(ALL:ALL) ALL			//添加的文本内容
+
+三、ubuntu--> 修改用户的描述符
+    a. $> nano /etc/passwd
+    b. 修改你的用户名描述符
+    ubuntu:x:1000:1000:ubuntu,,,:/home/ubuntu:/bin/bash
+    下划线的ubuntu就是你的用户名描述符
+
+四、ubuntu--> gedit在root用户下不好用
+    a.使用sudo gedit 命令
+
+五、ubuntu--> vmware Vnet8虚拟网卡丢失的找回问题
+	1.打开VMware Workstation，点击Edit --> Virtual Network Edit --> 打开Virtual Network Edit框
+	2.点击最下面的的Restore Default 按钮，恢复默认设置，这会在网络连接那块可以看到丢失的VMware Network Adapter VMnet8 又回来
+	3.或者 在Virtual Network Edit框 找到一个Add Network... 的按钮 弹出来一个框 然后在select a network to add 中选择VMnet8，单击OK 就可以啦
+
+六、hadoop --> Call From master/192.168.128.135 to master:8485 failed on connection exception: java.net.ConnectException: Connection refused
+解决方案：
+    1.  修改core-site.xml中的ipc参数
+    <!--修改core-site.xml中的ipc参数,防止出现连接journalnode服务ConnectException-->
+    <property>
+        <name>ipc.client.connect.max.retries</name>
+        <value>100</value>
+        <description>Indicates the number of retries a client will make to establish a server connection.</description>
+    </property>
+    <property>
+        <name>ipc.client.connect.retry.interval</name>
+        <value>10000</value>
+        <description>Indicates the number of milliseconds a client will wait for before retrying to establish a server connection.</description>
+    </property>
+    2注意：
+    　　	1) 仅对于这种由于服务没有启动完成造成连接超时的问题，都可以调整core-site.xml中的ipc参数来解决。如果目标服务本身没有启动成功，这边调整ipc参数是无效的。
+    　　	2) 该配置使namenode连接journalnode最大时间增加至1000s(maxRetries=100, sleepTime=10000),假如集群节点数过多，或者网络情况不稳定，造成连接时间超过1000s,仍会导致namenode挂掉。
+
+
+七、Ubuntu -->  在ubuntu中配置静态IP后无法正常上网
+    解决：
+    1、在终端执行 vim /etc/network/interfaces   在文件中加入如下内容，网关要写上，我开始一直无法上网就是因为没有配置网关
+        auto lo
+            iface lo inet loopback
+            #iface eth0 inet static
+            iface eth0 inet static
+            address 192.168.43.131		//你挑选的静态ip
+            netmask 255.255.255.0			//子网掩码
+            gateway 192.168.43.2			//网关
+            dns-nameservers 180.76.76.76	//DNS网关，使用百度的，有时候不能上网，是因为dns
+            auto eth0
+
+    2、执行 vim /etc/NetworkManager/NetworkManager.conf     将managed=false 改成true
+    3、执行vim /etc/resolvconf/resolv.conf.d/base 然后加入 nameserver 你的DNS服务器IP
+    4、重启机器。应该就可以上网了。
+
+
+八、Ubuntu --> 对于eclipse native-lzo library not available （找不到hadoop native lib等 ) 错误
+ 	解决：在usr/lib下，创建hadoop 的本地库的快捷方式
+    $> sudo ln -s /soft/hadoop/lib/native/libhadoop.so.1.0.0 /usr/lib/libhadoop.so
+
+
+九、Winfows--> 异常：
+    java.lang.NullPointerException at java.lang.ProcessBuilder.start(Unknown Source) at org.apache.hadoop.util.Shell.runCommand(Shell.java:482)
+    Exception in thread "main" java.lang.UnsatisfiedLinkError: org.apache.hadoop.io.nativeio.NativeIO$Windows.access0(Ljava/lang/String;I)Z
+    解决：
+    解决方法是下载https://github.com/srccodes/hadoop-common-2.2.0-bin（本地也有压缩包）文件然后将其中的hadoop.dll文件放到hadoop安装路径的bin文件夹下（配置好HADOOP_HOME的环境变量），然后重启电脑，这样问题就能得到解决了！
+        如果还是不行，请检查本地的java安装目录是否有空格，比如progeam files ...，如果有，请尝试将jdk安装到无空格目录或者采用下面的方法
+            找到windows hadoop安装目录，E:\hadoop-2.7.3\etc\hadoop\hadoop-env.cmd,修改其中的JAVA_HOME(目录是C:\Program Files\Java\jdk1.8.0_121，因为Program Files中存在空格，所以出现错误)只需要用
+        PROGRA~1代替Program Files即可
+
+
+十、hadoop--> eclipse 中执行hadoop mr作业的时候，./hadoop jar报错classnotfound，hadoop运行的时候抛 class not found 异常
+    解决方案：
+    1.请检查是否已经设定好 入口jar类,map类和reduce类
+    job.setJarByClass(MaxTemperature.class)
+    //设定MapClass
+    job.setMapperClass(MyMapper.class);
+    //设定ReduceClass
+    job.setReducerClass(MyReducer.class);
+
+    2.如果已经有，还是不行，那么就将app入口类和map类，reduce类，打成jar包，放入eclipse src目录下，并且构建到classpath,完美解决
+
+
+十一、hadoop--> eclipse 中执行hadoop mr作业的时候，mr作业一直卡在Running Job状态，查看日志发现是一直连接服务器失败，显示Connection 0.0.0.0：XXXX Failure
+018-08-26 11:22:11,872 INFO [main] org.apache.hadoop.yarn.client.RMProxy: Connecting to ResourceManager at /0.0.0.0:803
+    解决方案：
+    在yarn-site.xml中，配置好namenode的ip (master ip),添加如下配置。即可完美解决。当然，也可以在src目录下，创建新的yarn-site.xml文件，这样就避免了修改系统配置文件了。
+    <property>
+         <name>yarn.resourcemanager.scheduler.address</name>
+         <value>s100:8030</value>
+    </property>
+    <property>
+            <name>yarn.resourcemanager.resource-tracker.address</name>
+            <value>s100:8031</value>
+    </property>
+     <property>
+            <name>yarn.resourcemanager.address</name>
+            <value>s100:8032</value>
+      </property>
+
+
+十二、eclipse --> 解决在eclipse/plusins目录下继承插件之后，重新打开eclipse，不显示插件的问题
+    解决方案：
+    把eclipse安装目录下的configuration/org.eclipse.update和runtime的目录整个删除，重启eclipse。（org.eclipse.update 文件夹下记录了插件的历史更新情况，它只记忆了以前的插件更新情况，而新安装的插件它并不记录，所以删除掉这个文件夹就可以解决这个问题了，不过删除掉这个文件夹后， eclipse 会重新扫描所有的插件，此时再重新启动 eclipse 时可能会比刚才稍微慢点）
+
+
+十三、hadoop --> 当hadoop mr作业连接MySql数据库的时候，提示：Caused by: java.lang.RuntimeException: java.sql.SQLException: Access denied for user 'mysql'@'192.168.0.104' ((using password: YES)
+    解决方案：
+    1.首先检查mysql服务是否启动，若已启动则先将其停止服务，可在开始菜单的运行，使用命令：net stop mysql
+    2.打开一个cmd窗口，切换到mysql的bin目录，运行命令：mysqld --defaults-file="C:\Program Files\MySQL\MySQL Server 5.5\my.ini" --console --skip-grant-tables   该命令通过跳过权限安全检查，开启mysql服务，这样连接mysql时，可以不用输入用户密码。
+    3.验证一下，是不是不需要密码就可以登录mysql了，如果是，问题解决
+
+
+十四、hadoop --> 关于ssh报错：Agent admitted failure to sign using the key.
+    解决方案：
+    看了书上使用ssh时可以免密码来进行远程连接，详细见：http://blog.csdn.net/it_dream_er/article/details/50752326
+    SSH生成id_rsa, id_rsa.pub后，连接服务器却报：
+    Agent admitted failure to sign using the key.错误。
+    解决方法：
+    在当前用户下执行命令：
+    ssh-add
+    即可解决
+
+
+十五、hive --> 启用hive时报以下错误：
+Cannot find hadoop installation: $HADOOP_HOME or $HADOOP_PREFIX must be set or hadoop must be in the path
+
+    解决方案（一）：
+    1.$ cd ~/hive/conf/
+    2.$ cp hive-env.sh.template hive-env.sh
+    3.在hive-env.sh文件里加下面的内容
+    4.export HADOOP_HOME=/home/soft/hadoop
+
+    解决方案（二）：
+    1.在/etc/environment 中配置环境变量 HADOOP_HOME=/soft/hadoop
+
+
+十六、Hadoop --> Exception in thread "main" java.lang.RuntimeException: org.xml.sax.SAXParseException; systemId: file:/soft/apache-hive-2.1.1-bin/conf/hive-site.xml; lineNumber: 23; columnNumber: 5; Invalid byte 2 of 2-byte UTF-8 sequence.hive运行报错
+    解决方案：
+    检查配置文件hive-site.xml中是否有中文，有的话去掉中文就OK了
+
+
+十七、Hadoop --> 格式化集群之后，datanode无法启动的问题
+    解决方案：因为格式化集群之后，会重新生成Version，从而与datanode的Version文件内容不一致，导致无法启动。删除~/hadoop/dfs文件夹或者找到其中的Version文件，更改其版本为Namenode的版本就行了
+
+
+十八、Hive --> This command is not allowed on an ACID table mydata.tx with a non-ACID transaction manager.
+    问题出在:当设置成TBLPROPERTIES(“transactional”=”true”)，hive中需要在配置文件中设置：需要更改配置文件，但是会更改全局配置
+    Client Side
+    hive.support.concurrency – true
+    hive.enforce.bucketing – true (Not required as of Hive 2.0)
+    hive.exec.dynamic.partition.mode – nonstrict
+    hive.txn.manager – org.apache.hadoop.hive.ql.lockmgr.DbTxnManager
+    Server Side (Metastore)
+    hive.compactor.initiator.on – true (See table below for more details)
+    hive.compactor.worker.threads – a positive number on at least one instance of the Thrift metastore service
+
+
+    也可以使用简单的方法，设置成本次有效。即：set属性
+    SET hive.support.concurrency = true;
+    SET hive.enforce.bucketing = true;
+    SET hive.exec.dynamic.partition.mode = nonstrict;
+    SET hive.txn.manager = org.apache.hadoop.hive.ql.lockmgr.DbTxnManager;
+    SET hive.compactor.initiator.on = true;
+    SET hive.compactor.worker.threads = 1;
+
+
+十九、Hbase --> 解决hbase master有时候会启动不起来，找不到hdfs的问题
+    解决方案：
+    1.添加hadoop的配置文件目录到HBASE_CLASSPATH的环境变量中,并分发到所有的节点
+        [/soft/hbase/conf/hbase-env.sh]
+        export HBASE_CLASSPATH=$HBASE_CLASSPATH:/soft/hadoop/etc/hadoop
+
+    2.在hbase/conf目录下，创建到hadoop的hdfs-site.xml的符号链接，每个节点都要弄
+        $>ln -s /soft/hadoop/etc/hadoop/hdfs-site.xml /soft/hbase/conf/hdfs-site.xml
+
+    3.修改hbase-site.xml文件中hbase.rootdir的目录值。并分发到所有节点
+        [/soft/hbase/conf/hbase-site.xml]
+          <property>
+              <name>hbase.rootdir</name>
+              <value>hdfs://mycluster/hbase</value>
+          </property>
+
+
+二十、mybatis --> org.apache.ibatis.exceptions.PersistenceException:
+### Error building SqlSession.
+### The error may exist in org/mybatis/example/BlogMapper.xml
+### Cause: org.apache.ibatis.builder.BuilderException: Error parsing SQL Mapper Configuration.
+Cause: java.io.IOException: Could not find resource org/mybatis/example/BlogMapper.xml
+
+    解决方案：
+    方案1.将报告缺失的mapper映射文件放到resouces目录下
+    方案2.在maven的pom.xml中配置以下内容
+    <build>
+       <resources>
+           <resource>
+               <directory>src/main/java</directory>
+               <includes>
+                   <include>**/*.xml</include>
+               </includes>
+           </resource>
+       </resources>
+    </build>
+
+
+二十一、在使用spring c3p0数据源的时候 java.sql.SQLException: Access denied for user ''@'localhost' (using password: NO)
+
+    解决方案：
+    出错：<!-- 配置c3p0池化数据源bean -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"/>
+        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/mybatis"/>
+        <property name="user" value="mysql"/>
+        <property name="password" value="mysql"/>
+        <property name="maxPoolSize" value="10"/>
+        <property name="minPoolSize" value="2"/>
+        <property name="initialPoolSize" value="3"/>
+        <property name="acquireIncrement" value="2"/>
+    </bean>
+
+    解决：更改上述的jdbcurl 属性：<property name="jdbcUrl" value="jdbc:mysql://localhost:3306/mybatis?user=mysql&amp;password=mysql"/>
+
+
+二十二、Idea 添加完项目以后自动生成的web.xml报错 'org.springframework.web.servlet.DispatcherServlet' is not assignable to 'javax.servlet.Servlet
+    解决方案
+    Project Structure - Modules - 你的项目  - Dependencies --> +
+    添加Tomcat library
+
+
+二十三、使用Jstl异常：The absolute uri: http://java.sun.com/jsp/jstl/core cannot&nbs
+    错误提示是：
+           org.apache.jasper.JasperException: This absolute uri http://java.sun.com/jsp/jstl/core) cannot be resolved in either web.xml or the jar files deployed with this application
+    解决方案：web项目出现如上问题，据查是版本问题：
+        JSTL 1.0 的声明是：
+        <%@ taglib prefix="c" uri="http://java.sun.com/jstl/core " %>
+
+        JSTL1.1以后 的声明是：
+        <%@ taglib prefix="c" uri=http://java.sun.com/jsp/jstl/core %>
+
+          项目中，已经是 jstl 1.2 版本了，页面中也全部是用<%@ taglib prefix="c"uri=http://java.sun.com/jsp/jstl/core %>这种方式。javaee5之后就只有 jstl.jar 这一个jar包了，没有standard.jar包，tld文件也打包到jstl.jar里面去了，网上有一种说法是在web.xml文件里配置jsp-config的解决方式是没有用的。
+          最终查到问题的解决方法是： jstl.jar 包在ide项目中有，但在tomcat发布的应用WEB-INF/lib下没有，这是工具发布项目的问题，复制一个jstl.jar包到WEB-INF/lib下问题就解决了。
+    如果是idea或者ide出现了这个错误，找到jar包，构建到类路径下就可以了
+
+
+二十四、at org.apache.hadoop.hive.ql.metadata.SessionHiveMetaStoreClient.<init>(SessionHiveMetaStoreClient.java:74)：spark集成hive,将hive-site.xml配置文件拷贝到spark/conf下之后，启动spark-shell，就报错。
+    解决方案：
+
+    比较简单的解决方案是修改hive-site.xml里的配置去掉验证。
+    <property>
+        <name>hive.metastore.schema.verification</name>
+        <value>false</value>
+    </property>
+
+
+    再次启动spark-shell不在报此错误，但是又多了另一个错误：
+
+    原因是我的Spark主节点上有一个hive的主节点，hive的主节点上的hive-site.xml并没有配置类似链接主节点的配置，Spark中的hive-site.xml添加上如下配置就好了
+    <property>
+        <name>hive.metastore.uris</name>
+        <value>thrift://192.168.194.131:9083</value>
+        <description>Thrift URI for the remote metastore. Used by metastore client to connect to remote metastore.</description>
+    </property>
+
+
+
+二十五、******error: Unable to find encoder for type stored in a Dataset. Primitive types (Int, String, etc) and Product types (case classes) are supported by importing spark.implicits._ Support for serializing other types will be added in future releases. resDf_upd.map(row => {******
+    解决方案：
+    （1）针对这个问题，网上所得获取的资料还真不多。不过想着肯定是dataset统一了datframe与rdd之后就出现了新的要求。
+    经过查看spark官方文档，对spark有了一条这样的描述。
+    Dataset is Spark SQL’s strongly-typed API for working with structured data, i.e. records with a known schema.
+    Datasets are lazy and structured query expressions are only triggered when an action is invoked. Internally, aDataset represents a logical plan that describes the computation query required to produce the data (for a givenSpark SQL session)
+
+    A Dataset is a result of executing a query expression against data storage like files, Hive tables or JDBC databases. The structured query expression can be described by a SQL query, a Column-based SQL expression or a Scala/Java lambda function. And that is why Dataset operations are available in three variants.
+
+    从这可以看出，要想对dataset进行操作，需要进行相应的encode操作。特别是官网给的例子
+
+    // No pre-defined encoders for Dataset[Map[K,V]], define explicitly
+    implicit val mapEncoder = org.apache.spark.sql.Encoders.kryo[Map[String, Any]]
+    // Primitive types and case classes can be also defined as
+    // implicit val stringIntMapEncoder: Encoder[Map[String, Any]] = ExpressionEncoder()
+
+    // row.getValuesMap[T] retrieves multiple columns at once into a Map[String, T]
+    teenagersDF.map(teenager => teenager.getValuesMap[Any](List("name", "age"))).collect()
+    // Array(Map("name" -> "Justin", "age" -> 19))
+
+    从这看出，要进行map操作，要先定义一个Encoder。。
+    这就增加了系统升级繁重的工作量了。为了更简单一些，幸运的dataset也提供了转化RDD的操作。因此只需要将之前dataframe.map
+
+    （2）如果无法使用（1），请参照（2）
+    查看scala代码内部类：将case class 定义到main函数之外，并且在main函数内部import spark.implicits._ 试验一下
+
+
+二十六、spark-shell运行时报‘“E:Program”’'不是内部或外部命令，也不是可运行的程序
+
+    安装完成后直接在CMD中执行spark-shell报错
+    ‘“E:Program”’'不是内部或外部命令，也不是可运行的程序
+    一般出现这个问题就是，Path路径中存在空格，但是我得SPARK_HOME环境变量中不存空格，找了好久，发现在spark的安装目录下的bin目录下的spark-class2.cmd文件中(spark1.x的版本中，直接是spark-class.cmd文件)，在执行启动过程中，会执行这个文件，这个文件中会调用JAVA_HOME环境变量，而我的JAVA_HOME环境变量是在E:\Program Files目录下，所以在执行这里报错了。
+    然后，我把jdk卸载了，然后重新安装的jdk，这次安装时不放在Program Files目录下，而是放在没有空格的路径下。
+    如此这般后，就OK 了
+
+
+二十七、lambda expressions are not supported at language level '5'
+    解决方案：
+    刚把Eclipse中新建的练习项目导入idea的时候想使用lambda表达式发现一直报如下错误：
+    lambda expressions are not supported at language level '5'
+    将项目默认sdk替换成jdk8仍然不起作用，最后发现需要修改Source中的languagelevel为8，找到stackoverflow上一个回答不错，copy如下供大家参考：
+    I had to do a few things to get rid of this problem.
+    File > Project Structure > Project > Project SDK: Change it to Java 1.8.XX
+    File > Project Structure > Project > Language Level: SDK 8 (in my case SDK default was already 8)
+    File > Project Structure > Modules > Sources > SDK 8 (in my case SDK default was already 8)
+    File > Settings > Build, Execution, Deployment > Compiler > Java Compiler > Project bytecode version > 1.8
+    File > Settings > Build, Execution, Deployment > Compiler > Java Compiler > Per-module bytecode version > Target bytecode version > 1.8
+    That should do the trick.
+
+二十八、Information:java: javacTask: 源发行版 1.8 需要目标发行版 1.8
+    解决方案：
+    1，Project Structure里确认两个地方:Project sdk以及project language level
+    2，Project Structure->Modules里Sources里的Language level
+    3，Preferences->java Compiler->Per-module bytecode Version
+    这三个地方需要一致。
+
+
+
+
+
+
+
+
+

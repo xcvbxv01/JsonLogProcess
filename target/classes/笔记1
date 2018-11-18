@@ -1,0 +1,284 @@
+
+一、团购网站的标签生成应用项目分析
+--------------------------------------------------------------
+    1.原始数据展示
+        86913510	{"reviewPics":null,"extInfoList":null,"expenseList":null,"reviewIndexes":[2],"scoreList":[{"score":5,"title":"口味","desc":""},{"score":5,"title":"服务","desc":""},{"score":5,"title":"环境","desc":""}]}
+        86913510	{"reviewPics":null,"extInfoList":null,"expenseList":null,"reviewIndexes":[2],"scoreList":[{"score":5,"title":"环境","desc":""},{"score":5,"title":"服务","desc":""},{"score":5,"title":"口味","desc":""}]}
+        86913510	{"reviewPics":null,"extInfoList":null,"expenseList":null,"reviewIndexes":[1,2],"scoreList":[{"score":5,"title":"环境","desc":""},{"score":5,"title":"服务","desc":""},{"score":5,"title":"口味","desc":""}]}
+        86913510	{"reviewPics":null,"extInfoList":null,"expenseList":null,"reviewIndexes":[2],"scoreList":null}
+        86913510	{"reviewPics":null,"extInfoList":null,"expenseList":null,"reviewIndexes":[2],"scoreList":[{"score":5,"title":"环境","desc":""},{"score":5,"title":"服务","desc":""},{"score":5,"title":"口味","desc":""}]}
+        86913510	{"reviewPics":null,"extInfoList":[{"title":"contentTags","values":["午餐","分量适中"],"desc":"","defineType":0},{"title":"tagIds","values":["684","240"],"desc":"","defineType":0}],"expenseList":null,"reviewIndexes":[2],"scoreList":null}
+        86913510	{"reviewPics":[],"extInfoList":null,"expenseList":null,"reviewIndexes":[1,2],"scoreList":[{"score":5,"title":"环境","desc":""},{"score":5,"title":"服务","desc":""},{"score":5,"title":"口味","desc":""}]}
+        86913510	{"reviewPics":null,"extInfoList":null,"expenseList":null,"reviewIndexes":[1,2],"scoreList":null}
+        86913510	{"reviewPics":[{"picId":2389351962,"url":"http://p0.where.net/shaitu/84838649c4c6d51af18247e7fe8d4a2b390391.jpg","status":1},{"picId":2389917441,"url":"http://p0.where.net/shaitu/58e59c4c675a7d888573af9887cf2813357156.jpg","status":1}],"extInfoList":null,"expenseList":null,"reviewIndexes":[1,2],"scoreList":[{"score":5,"title":"环境","desc":""},{"score":5,"title":"服务","desc":""},{"score":5,"title":"口味","desc":""}]}
+        86913510	{"reviewPics":null,"extInfoList":null,"expenseList":null,"reviewIndexes":[1,2],"scoreList":[{"score":4,"title":"环境","desc":""},{"score":4,"title":"服务","desc":""},{"score":3,"title":"口味","desc":""}]}
+        86913510	{"reviewPics":null,"extInfoList":null,"expenseList":null,"reviewIndexes":[1,2],"scoreList":[{"score":5,"title":"环境","desc":""},{"score":4,"title":"服务","desc":""},{"score":3,"title":"口味","desc":""}]}
+        ...
+        ...
+
+    2.数据分析
+        a.提取数据
+            line.map(e=>e.split("\t"))		//映射成json对象
+        	    .filter(e=>e.extInfoList != null)
+
+        b.flatMap，得到商家和评价的映射
+           86913510 午餐
+           86913510 分量适中
+           86913510 ...
+
+        c.mapToPair
+           (86913510,午餐) , 1
+           (86913510,分量适中), 1
+           (86913510,... ), 1
+
+        d.reduceByKey(_ + _)
+           (86913510,午餐) , 120
+           (86913510,分量适中), 250
+           (86913510,... ), 128
+
+        e.map
+           86913510,(午餐,120)
+           86913510,(分量适中, 250)
+           86913510,(... , 128)
+
+        f.reduce
+           86913510,((午餐,120),(分量适中, 250),(... , 128),...)
+
+        g.sort按照count排序
+           提取前10个标签，进行首页显示
+           86913510,((分量适中, 250),(... , 128),(午餐,120),...)
+
+
+二、开始项目
+---------------------------------------------------------
+    1.创建项目模块，添加pom依赖，添加scala支持
+
+    2.编写评价生成类
+        package com.test.taggen;
+
+        import com.alibaba.fastjson.JSON;
+        import com.alibaba.fastjson.JSONArray;
+        import com.alibaba.fastjson.JSONObject;
+
+        /**
+         * 标签生成程序
+         */
+        public class ReviewTags {
+
+            public static String extractTags(String jsonStr){
+                JSONObject object = JSON.parseObject(jsonStr);
+                if(object == null || !object.containsKey("extInfoList")){
+                    return "";
+                }
+                JSONArray array = object.getJSONArray("extInfoList");
+                if(array == null) {
+                    return "";
+                }
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < array.size(); i++) {
+                    JSONObject obj = array.getJSONObject(i);
+                    if (obj != null && obj.containsKey("title") && obj.getString("title").equals("contentTags") && obj.containsKey("values")) {
+                        JSONArray arr = obj.getJSONArray("values");
+                        if(arr == null){
+                            continue;
+                        }
+                        boolean begin = true;
+                        for (int j = 0; j < arr.size(); j++) {
+                            if (begin) {
+                                begin = false;
+                            } else {
+                                sb.append(",");
+                            }
+                            sb.append(arr.getString(j));
+                        }
+                    }
+                }
+                return sb.toString();
+            }
+
+            public static void main(String [] args)
+            {
+                //测试串，抽取评论
+                String s = "{\"reviewPics\":[{\"picId\":2405538806,\"url\":\"http://p0.where.net/shaitu/7c10019c62947d01ded80cc698c77c90217708.jpg\",\"status\":1},{\"picId\":2405442602,\"url\":\"http://p0.meituan.net/shaitu/d41ef06f5d16d5d3cbc871765ff93130270451.jpg\",\"status\":1}],\"extInfoList\":[{\"title\":\"contentTags\",\"values\":[\"回头客\",\"上菜快\",\"环境优雅\",\"性价比高\",\"菜品不错\"],\"desc\":\"\",\"defineType\":0},{\"title\":\"tagIds\",\"values\":[\"493\",\"232\",\"24\",\"300\",\"1\"],\"desc\":\"\",\"defineType\":0}],\"expenseList\":null,\"reviewIndexes\":[1,2],\"scoreList\":null}";
+                System.out.println(extractTags(s));
+                System.out.println(extractTags(""));
+                System.out.println(extractTags(null));
+            }
+        }
+
+
+    3.编写scala变换类---将生成的line进行一系列的变换
+        package temp
+
+        import com.test.taggen.ReviewTags
+        import org.apache.spark.{SparkConf, SparkContext}
+
+        object TagGenerator {
+            def main(args: Array[String])= {
+
+                val conf = new SparkConf().setMaster("local[*]").setAppName("tagGen");
+                val sc = new SparkContext(conf);
+
+                val poi_tags = sc.textFile("file:///D:\\share\\project\\data\\temptags.txt")
+
+                val poi_taglist = poi_tags.map(e=>e.split("\t")).filter(e=>e.length == 2).           //按照/t切割，过滤不等于2的行
+
+                        map(e => e(0) -> ReviewTags.extractTags(e(1))).                                       // -> 映射形成tuple(id,values) ==> // 77287793 -> 音响效果好,干净卫生,服务热情
+                        filter(e=> e._2.length > 0).                                                        //过滤掉评论串为空的
+                        map(e=> e._1 -> e._2.split(",")).                                           //切割，映射成tiple ==> // 77287793 -> [音响效果好,干净卫生,服务热情]
+                        flatMapValues(e=>e).                                                                //压扁  ==> // 77287793 -> 音响效果好 , 77287793 -> 干净卫生, 77287793 -> 服务热情
+                        map(e=> (e._1,e._2)->1).                                                            //映射 ==> // (77287793,音响效果好)->1,(77287793,干净卫生)->1,(77287793,服务热情)->1
+                        reduceByKey(_+_).                                                                   //按key聚合 ==> // (77287793,音响效果好)->340 , (77287793,干净卫生)->125 ,(77287793,服务热情)-> 20
+                        // 使用列表的意义在于：将key相桶的value可以直接聚合到一个列表中
+                        map(e=> e._1._1 -> List((e._1._2,e._2))).                                           //映射 ==> // 77287793->List(音响效果好,340), 77287793 -> List(干净卫生,125) ...
+                        // ::: 的意义就是集合的累加聚合
+                        reduceByKey(_:::_).                                                                 //聚合 ==> //77287793->List((音响效果好,340),(干净卫生,125),(..))
+                        map(
+                            e => e._1 -> e._2.sortBy(_._2).                     //这些只是对value的操作==> 排序，倒序，取出前10，做映射，输出
+                                    reverse.take(10).
+                                    map(a=> a._1 + ":" + a._2.toString).        //将List<Tuple(Strint,String) 变成 List<String> ==>  List(音响效果好:340, 干净卫生:125, ..)
+                                    mkString(",")                               //将List<String>,以‘,’进行连接，作为字符串输出 ==> 音响效果好:340, 干净卫生:125, ...
+                        )                                                       //最终返回元组 ==>  77287793-> 音响效果好:340, 干净卫生:125, ...
+
+                poi_taglist.map(e=>e._1+"\t"+e._2).                             //将元组变成字符串，然后保存成文本 ==> "77287793 \t 音响效果好:340, 干净卫生:125, ..."
+                        saveAsTextFile("file:///D:\\share\\project\\data\\temptagsOutPut.txt")
+            }
+        }
+
+
+三、编写java版
+-----------------------------------------------------------------
+    package com.test.taggen;
+
+    import org.apache.spark.SparkConf;
+    import org.apache.spark.api.java.JavaPairRDD;
+    import org.apache.spark.api.java.JavaRDD;
+    import org.apache.spark.api.java.JavaSparkContext;
+    import scala.Tuple2;
+    import java.util.*;
+
+    public class TagGenJava {
+
+        public static void main(String [] args)
+        {
+            SparkConf conf = new SparkConf().setMaster("local[*]").setAppName("tagGen");
+            JavaSparkContext sc = new JavaSparkContext(conf);
+            JavaRDD<String> rdd = sc.textFile("file:///D:\\share\\project\\data\\temptags.txt");
+
+
+            JavaRDD<String[]> rdd1 = rdd.map( s -> s.split("\t"));
+
+            JavaRDD<String[]> rdd2 = rdd1.filter(s -> s.length == 2);
+
+            JavaPairRDD<String, String> rdd3 = rdd2.mapToPair(s -> new Tuple2<>(s[0], ReviewTags.extractTags(s[1])));
+
+            JavaPairRDD<String, String> rdd4 = rdd3.filter(s -> s._2.length() > 0);
+
+            JavaPairRDD<String, String[]> rdd5 = rdd4.mapToPair(s -> new Tuple2<>(s._1, s._2.split(",")));
+
+            JavaPairRDD<String, String> rdd6 = rdd5.flatMapValues(s -> Arrays.asList(s));
+
+            JavaPairRDD<Tuple2<String, String>, Integer> rdd7 = rdd6.mapToPair(s -> new Tuple2<>(new Tuple2<>(s._1, s._2), 1));
+
+            JavaPairRDD<Tuple2<String, String>, Integer> rdd8 = rdd7.reduceByKey((s1, s2) -> s1 + s2);
+
+            JavaPairRDD<String, List<Tuple2<String, Integer>>> rdd9 = rdd8.mapToPair(s -> new Tuple2<>(s._1._1, Arrays.asList(new Tuple2<>(s._1._2, s._2))));
+
+            JavaPairRDD<String, List<Tuple2<String, Integer>>> rdd10 = rdd9.reduceByKey((s1, s2) -> Arrays.asList(s1.get(0), s2.get(0)));
+
+            JavaPairRDD<String, List<Tuple2<String, Integer>>> rdd11 = rdd10.mapValues(s -> {
+                //排序
+
+                s.sort(new Comparator<Tuple2<String, Integer>>() {
+                    @Override
+                    public int compare(Tuple2<String, Integer> o1, Tuple2<String, Integer> o2) {
+                        return o1._2 > o2._2 ? -1 : 1;
+                    }
+                });
+                //取出前10
+                int len = 10;
+                if(s.size() < 10)
+                {
+                  len = s.size();
+                }
+                Tuple2<String, Integer> [] arr = new Tuple2[len];
+                for (int i = 0; i <len ; i++) {
+                    arr[i] = s.get(i);
+                }
+                return Arrays.asList(arr);
+            });
+
+            JavaPairRDD<String, String> rdd12 = rdd11.mapValues(s -> {
+                String str = "";
+                Tuple2<String, Integer>[] array = (Tuple2<String, Integer>[]) s.toArray();
+                for (Tuple2<String, Integer> t : array) {
+                    str += t._1 + ":" + t._2 + ",";
+                }
+                str = str.substring(0,str.length()-1);
+                return str;
+            });
+
+            JavaRDD<String> rdd13 = rdd12.map(e -> e._1 + "\t" + e._2);
+
+            rdd13.collect().forEach(s -> System.out.println(s));
+
+            rdd13.saveAsTextFile("file:///D:\\share\\project\\data\\temptagsOutPut");
+        }
+    }
+
+
+
+四、结果预览
+------------------------------------------------------------------------------
+    83644298	味道赞:1,价格实惠:1,服务热情:1,性价比高:1,体验好:1
+    82317795	味道差:1
+    77705462	服务热情:3,环境优雅:2,价格实惠:2,羊肉:2,干净卫生:1,肉类好:1,回头客:1,羊蝎子:1,味道赞:1
+    85766086	干净卫生:2,味道赞:2,服务热情:2,价格实惠:2,菜品不错:1,环境优雅:1,体验好:1,性价比高:1,服务差:1,上菜慢:1
+    74145782	服务热情:18,味道赞:14,干净卫生:13,上菜快:13,菜品不错:12,分量足:11,环境优雅:11,回头客:11,性价比高:6,停车方便:5
+    71039150	体验好:1,环境优雅:1,朋友聚会:1,价格实惠:1,团建:1
+    70611801	干净卫生:4,回头客:3,环境优雅:2,分量足:2,味道赞:2,性价比高:1,服务热情:1,价格实惠:1,肉类好:1
+    73963176	味道赞:15,价格实惠:12,分量足:11,菜品不错:10,干净卫生:7,服务热情:7,肉类好:7,环境优雅:6,回头客:4,性价比高:3
+    84270191	体验好:2,性价比高:2,服务热情:2,价格实惠:2,环境优雅:1,大夫赞:1,体验舒服:1,干净卫生:1
+    89223651	服务热情:8,环境优雅:8,技师专业:7,干净卫生:5,价格实惠:4,无推销:4,服务一般:4,无办卡:3,体验好:2,环境一般:2
+    82016443	分量足:3,环境优雅:2,主食赞:2,干净卫生:2,味道赞:2,肉类好:1,价格实惠:1,服务热情:1
+    77287793	干净卫生:29,音响效果好:26,环境优雅:26,价格实惠:25,交通便利:25,性价比高:19,服务热情:18,高大上:16,体验好:13,停车方便:13
+    79197522	服务热情:2,干净卫生:1,技师专业:1,体验舒服:1,放松舒服:1,价格实惠:1
+    83084036	价格实惠:1,干净卫生:1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
